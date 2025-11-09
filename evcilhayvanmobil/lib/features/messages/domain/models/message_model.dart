@@ -18,14 +18,31 @@ class Message {
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
+    final senderData = json['sender'];
+
     return Message(
       id: json['_id'] ?? '',
       conversationId: json['conversationId']?.toString() ?? '',
-      sender: json['sender'] != null
-          ? User.fromJson(json['sender'])
-          : User(id: '', name: 'Bilinmeyen', email: '', role: ''),
+      sender: senderData is Map<String, dynamic>
+          ? User.fromJson(senderData)
+          : senderData is String
+              ? User.fromJson({'_id': senderData})
+              : User.fromJson({}),
       text: json['text'] ?? '',
-      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      createdAt: _parseDateTime(json['createdAt']),
     );
   }
+}
+
+DateTime _parseDateTime(dynamic value) {
+  if (value is String && value.isNotEmpty) {
+    return DateTime.tryParse(value) ?? DateTime.now();
+  }
+  if (value is int) {
+    return DateTime.fromMillisecondsSinceEpoch(value);
+  }
+  if (value is double) {
+    return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+  }
+  return DateTime.now();
 }

@@ -32,9 +32,11 @@ class Pet {
   final List<String> photos;
   final bool vaccinated;
   final Map<String, dynamic> location;
+  final double? latitude;
+  final double? longitude;
   final bool isActive;
 
-  Pet({
+  const Pet({
     required this.id,
     this.owner,
     required this.name,
@@ -46,6 +48,8 @@ class Pet {
     required this.photos,
     required this.vaccinated,
     required this.location,
+    required this.latitude,
+    required this.longitude,
     required this.isActive,
   });
 
@@ -55,23 +59,56 @@ class Pet {
       'coordinates': [0.0, 0.0],
     };
 
+    final locationData = json['location'];
+    Map<String, dynamic> locationMap = defaultLocation;
+    double? latitude;
+    double? longitude;
+
+    if (locationData is Map<String, dynamic>) {
+      locationMap = Map<String, dynamic>.from(locationData);
+      final coords = locationData['coordinates'];
+      if (coords is List && coords.length >= 2) {
+        longitude = _parseDouble(coords[0]);
+        latitude = _parseDouble(coords[1]);
+      }
+    }
+
+    final ageValue = json['ageMonths'];
+    final int parsedAge = ageValue is int
+        ? ageValue
+        : ageValue is String
+            ? int.tryParse(ageValue) ?? 0
+            : 0;
+
+    final photosList = (json['photos'] as List?)
+            ?.whereType<String>()
+            .toList(growable: false) ??
+        const <String>[];
+
     return Pet(
       id: json['_id'] ?? '',
       owner: json['ownerId'] != null
           ? PetOwner.fromJson(json['ownerId'])
           : null,
-      name: json['name'] ?? 'Bilinmeyen Evcil',
-      species: json['species'] ?? 'Bilinmiyor',
-      breed: json['breed'] ?? 'Bilinmiyor',
-      gender: json['gender'] ?? 'Bilinmiyor',
-      photos: List<String>.from(json['photos'] ?? []),
-      ageMonths: (json['ageMonths'] ?? 0) is int
-          ? json['ageMonths']
-          : int.tryParse(json['ageMonths'].toString()) ?? 0,
-      bio: json['bio'],
-      vaccinated: json['vaccinated'] ?? false,
-      location: json['location'] ?? defaultLocation,
-      isActive: json['isActive'] ?? true,
+      name: json['name']?.toString() ?? 'Bilinmeyen Evcil',
+      species: json['species']?.toString() ?? 'Bilinmiyor',
+      breed: json['breed']?.toString() ?? 'Bilinmiyor',
+      gender: json['gender']?.toString() ?? 'Bilinmiyor',
+      photos: photosList,
+      ageMonths: parsedAge,
+      bio: json['bio']?.toString(),
+      vaccinated: json['vaccinated'] == true,
+      location: locationMap,
+      latitude: latitude,
+      longitude: longitude,
+      isActive: json['isActive'] != false,
     );
   }
+}
+
+double? _parseDouble(dynamic value) {
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is String) return double.tryParse(value);
+  return null;
 }

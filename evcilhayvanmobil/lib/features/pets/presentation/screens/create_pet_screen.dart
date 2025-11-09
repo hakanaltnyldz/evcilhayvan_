@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../data/repositories/pets_repository.dart';
 import '../../domain/models/pet_model.dart';
+import 'location_picker_screen.dart';
 
 class CreatePetScreen extends ConsumerStatefulWidget {
   final Pet? petToEdit;
@@ -24,8 +25,7 @@ class _CreatePetScreenState extends ConsumerState<CreatePetScreen> {
   late final TextEditingController _breedController;
   late final TextEditingController _ageController;
   late final TextEditingController _bioController; // Bu opsiyonel kalacak
-  late final TextEditingController _latController;
-  late final TextEditingController _lonController;
+  LatLng? _selectedLocation;
 
   String _selectedSpecies = 'cat';
   String _selectedGender = 'unknown';
@@ -49,16 +49,16 @@ class _CreatePetScreenState extends ConsumerState<CreatePetScreen> {
       _selectedSpecies = pet.species;
       _selectedGender = pet.gender;
       _isVaccinated = pet.vaccinated;
-      _latController = TextEditingController(text: pet.location['coordinates'][1].toString());
-      _lonController = TextEditingController(text: pet.location['coordinates'][0].toString());
+      if (pet.latitude != null && pet.longitude != null) {
+        _selectedLocation = LatLng(pet.latitude!, pet.longitude!);
+      }
     } else {
       // Oluşturma Modu
       _nameController = TextEditingController();
       _breedController = TextEditingController();
       _ageController = TextEditingController();
       _bioController = TextEditingController();
-      _latController = TextEditingController();
-      _lonController = TextEditingController();
+      _selectedLocation = null;
     }
   }
 
@@ -68,8 +68,6 @@ class _CreatePetScreenState extends ConsumerState<CreatePetScreen> {
     _breedController.dispose();
     _ageController.dispose();
     _bioController.dispose();
-    _latController.dispose();
-    _lonController.dispose();
     super.dispose();
   }
 
@@ -77,7 +75,14 @@ class _CreatePetScreenState extends ConsumerState<CreatePetScreen> {
     // Validator'lar (doğrulayıcılar) artık formu kontrol edecek
     if (!_formKey.currentState!.validate()) return;
     if (_isLoading) return;
-    
+
+    if (_selectedLocation == null) {
+      setState(() {
+        _errorMessage = 'Lütfen ilan için harita üzerinden bir konum seçin.';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -98,9 +103,9 @@ class _CreatePetScreenState extends ConsumerState<CreatePetScreen> {
       final bio = _bioController.text.isNotEmpty ? _bioController.text : null;
       
       // 'location' artık null olamaz
-      final lat = double.parse(_latController.text);
-      final lon = double.parse(_lonController.text);
-      
+      final lat = _selectedLocation!.latitude;
+      final lon = _selectedLocation!.longitude;
+
       Map<String, dynamic> locationData = {
         'type': 'Point',
         'coordinates': [lon, lat], // GeoJSON formatı [Boylam, Enlem]
@@ -147,6 +152,26 @@ class _CreatePetScreenState extends ConsumerState<CreatePetScreen> {
       });
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickLocation() async {
+    final result = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute(
+        builder: (_) => LocationPickerScreen(
+          initialPosition: _selectedLocation,
+        ),
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        _selectedLocation = result;
+        if (_errorMessage != null &&
+            _errorMessage!.toLowerCase().contains('konum')) {
+          _errorMessage = null;
+        }
+      });
     }
   }
 
@@ -232,38 +257,55 @@ class _CreatePetScreenState extends ConsumerState<CreatePetScreen> {
 
                 // --- GÜNCELLEME: "Opsiyonel" kaldırıldı ---
                 const Text('Konum', style: TextStyle(fontWeight: FontWeight.bold)),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _latController,
-                        decoration: const InputDecoration(labelText: 'Enlem (Lat)'),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        // --- GÜNCELLEME: Validator eklendi ---
-                        validator: (value) {
-                          if (value?.isEmpty ?? true) return 'Enlem zorunlu';
-                          if (double.tryParse(value!) == null) return 'Geçersiz sayı';
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _lonController,
-                        decoration: const InputDecoration(labelText: 'Boylam (Lon)'),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        // --- GÜNCELLEME: Validator eklendi ---
-                        validator: (value) {
-                          if (value?.isEmpty ?? true) return 'Boylam zorunlu';
-                          if (double.tryParse(value!) == null) return 'Geçersiz sayı';
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _pickLocation,
+                  icon: const Icon(Icons.map_rounded),
+                  label: Text(
+                    _selectedLocation == null
+                        ? 'Konum Seç'
+                        : 'Konumu Güncelle',
+                  ),
                 ),
-                
+                if (_selectedLocation != null) ...[
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: IgnorePointer(
+                      child: SizedBox(
+                        height: 200,
+                        width: double.infinity,
+                        child: GoogleMap(
+                          initialCameraPosition: CameraPosition(
+                            target: _selectedLocation!,
+                            zoom: 14,
+                          ),
+                          markers: {
+                            Marker(
+                              markerId: const MarkerId('selected-location'),
+                              position: _selectedLocation!,
+                            ),
+                          },
+                          zoomControlsEnabled: false,
+                          liteModeEnabled: true,
+                          myLocationButtonEnabled: false,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Seçilen konum: '
+                    '${_selectedLocation!.latitude.toStringAsFixed(5)}, '
+                    '${_selectedLocation!.longitude.toStringAsFixed(5)}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
+                        ),
+                  ),
+                ],
+
                 const SizedBox(height: 24),
 
                 if (_errorMessage != null)
