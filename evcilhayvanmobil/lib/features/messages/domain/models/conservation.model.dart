@@ -21,10 +21,14 @@ class Conversation {
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json, String currentUserId) {
-    final participants = json['participants'] as List? ?? [];
+    final participants = (json['participants'] as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .toList() ??
+        const <Map<String, dynamic>>[];
+
     final otherParticipantJson = participants.firstWhere(
-      (p) => p['_id'] != currentUserId,
-      orElse: () => participants.isNotEmpty ? participants.first : {},
+      (p) => (p['_id'] ?? p['id']) != currentUserId,
+      orElse: () => participants.isNotEmpty ? participants.first : <String, dynamic>{},
     );
 
     final relatedPetData = json['relatedPet'];
@@ -33,18 +37,46 @@ class Conversation {
 
     if (relatedPetData is Map<String, dynamic>) {
       relatedPet = Pet.fromJson(relatedPetData);
-      relatedPetId = relatedPetData['_id'];
+      relatedPetId = relatedPetData['_id']?.toString();
     } else if (relatedPetData is String) {
       relatedPetId = relatedPetData;
     }
 
+    final dynamic lastMessageData = json['lastMessage'];
+    String lastMessageText = '';
+    if (lastMessageData is Map<String, dynamic>) {
+      lastMessageText = lastMessageData['text']?.toString() ?? '';
+    } else if (lastMessageData is String) {
+      lastMessageText = lastMessageData;
+    }
+
+    final updatedAt = _parseDateTime(
+      json['updatedAt'] ??
+          (lastMessageData is Map<String, dynamic>
+              ? lastMessageData['createdAt'] ?? lastMessageData['updatedAt']
+              : null),
+    );
+
     return Conversation(
-      id: json['_id'] ?? '',
+      id: json['_id']?.toString() ?? '',
       otherParticipant: User.fromJson(otherParticipantJson),
       relatedPet: relatedPet,
       relatedPetId: relatedPetId,
-      lastMessage: json['lastMessage'] ?? '',
-      updatedAt: DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
+      lastMessage: lastMessageText,
+      updatedAt: updatedAt,
     );
   }
+}
+
+DateTime _parseDateTime(dynamic value) {
+  if (value is String && value.isNotEmpty) {
+    return DateTime.tryParse(value) ?? DateTime.now();
+  }
+  if (value is int) {
+    return DateTime.fromMillisecondsSinceEpoch(value);
+  }
+  if (value is double) {
+    return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+  }
+  return DateTime.now();
 }

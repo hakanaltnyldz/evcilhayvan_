@@ -10,6 +10,7 @@ import 'package:evcilhayvanmobil/features/pets/domain/models/pet_model.dart';
 import 'package:evcilhayvanmobil/features/auth/data/repositories/auth_repository.dart';
 import 'package:evcilhayvanmobil/features/messages/data/repositories/message_repository.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 final petDetailProvider = FutureProvider.autoDispose.family<Pet, String>((ref, petId) {
   final repository = ref.watch(petsRepositoryProvider);
@@ -98,6 +99,10 @@ class PetDetailScreen extends ConsumerWidget {
                           const SizedBox(height: 28),
                           _HighlightsSection(pet: pet),
                           const SizedBox(height: 28),
+                          if (pet.latitude != null && pet.longitude != null) ...[
+                            _LocationSection(pet: pet),
+                            const SizedBox(height: 28),
+                          ],
                           _OwnerSection(pet: pet),
                         ],
                       ),
@@ -148,9 +153,7 @@ class _DetailHeader extends StatelessWidget {
     final heroTag = 'pet-image-${pet.id}';
     final theme = Theme.of(context);
 
-    final locationCoordinates = pet.location['coordinates'];
-    final hasCoordinates =
-        locationCoordinates is List && locationCoordinates.length == 2;
+    final hasCoordinates = pet.latitude != null && pet.longitude != null;
 
     return Stack(
       children: [
@@ -315,7 +318,7 @@ class _DetailHeader extends StatelessWidget {
                       Expanded(
                         child: Text(
                           hasCoordinates
-                              ? 'Konum: ${locationCoordinates[1]}, ${locationCoordinates[0]}'
+                              ? 'Konum: ${pet.latitude!.toStringAsFixed(4)}, ${pet.longitude!.toStringAsFixed(4)}'
                               : 'Konum bilgisi paylaşılmadı',
                           style: theme.textTheme.bodyMedium,
                         ),
@@ -342,7 +345,8 @@ class _InfoGrid extends StatelessWidget {
     final theme = Theme.of(context);
     final items = <_InfoTileData>[
       _InfoTileData('Tür', pet.species, Icons.category_outlined),
-      _InfoTileData('Cins', pet.breed ?? 'Bilinmiyor', Icons.badge_outlined),
+      _InfoTileData('Cins', pet.breed.isNotEmpty ? pet.breed : 'Bilinmiyor',
+          Icons.badge_outlined),
       _InfoTileData('Cinsiyet', pet.gender, Icons.transgender),
       _InfoTileData('Yaş (Ay)', pet.ageMonths.toString(), Icons.cake_rounded),
       _InfoTileData('Aşı Durumu', pet.vaccinated ? 'Aşılı' : 'Aşısız', Icons.vaccines),
@@ -573,6 +577,8 @@ class _ActionButtons extends ConsumerWidget {
                         currentUserId: currentUser.id,
                         relatedPetId: pet.id,
                       );
+
+                      ref.invalidate(conversationsProvider);
 
                       if (!context.mounted) return;
 
@@ -1012,6 +1018,65 @@ class _HighlightsSection extends StatelessWidget {
             ),
           );
         }),
+      ],
+    );
+  }
+}
+
+class _LocationSection extends StatelessWidget {
+  final Pet pet;
+
+  const _LocationSection({required this.pet});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final position = LatLng(pet.latitude!, pet.longitude!);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Harita',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: SizedBox(
+            height: 220,
+            width: double.infinity,
+            child: GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: position,
+                zoom: 14,
+              ),
+              markers: {
+                Marker(
+                  markerId: const MarkerId('pet-location'),
+                  position: position,
+                ),
+              },
+              liteModeEnabled: true,
+              zoomControlsEnabled: false,
+              myLocationButtonEnabled: false,
+              scrollGesturesEnabled: false,
+              zoomGesturesEnabled: false,
+              rotateGesturesEnabled: false,
+              tiltGesturesEnabled: false,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Konum koordinatları: '
+          '${pet.latitude!.toStringAsFixed(5)}, ${pet.longitude!.toStringAsFixed(5)}',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }

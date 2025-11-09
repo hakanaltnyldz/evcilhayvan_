@@ -221,7 +221,8 @@ class _PetInfoSection extends StatelessWidget {
             children: [
               _InfoChip(
                 icon: Icons.pets,
-                label: pet.breed ?? 'Cins Bilinmiyor',
+                label:
+                    pet.breed.isNotEmpty ? pet.breed : 'Cins Bilinmiyor',
               ),
               _InfoChip(
                 icon: Icons.cake_outlined,
@@ -260,10 +261,9 @@ class _PetInfoSection extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                     ),
-                    if (pet.location['coordinates'] != null &&
-                        pet.location['coordinates'].length == 2)
+                    if (pet.latitude != null && pet.longitude != null)
                       Text(
-                        'Konum: ${pet.location['coordinates'][1]}, ${pet.location['coordinates'][0]}',
+                        'Konum: ${pet.latitude!.toStringAsFixed(4)}, ${pet.longitude!.toStringAsFixed(4)}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: AppPalette.onSurfaceVariant,
                             ),

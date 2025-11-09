@@ -46,7 +46,10 @@ class MessageRepository {
       
       // Her bir sohbeti modelimize çevirirken currentUserId'yi yolluyoruz
       // ki 'otherParticipant'ı doğru bulabilelim.
-      return jsonList.map((json) => Conversation.fromJson(json, currentUserId)).toList();
+      return jsonList
+          .whereType<Map<String, dynamic>>()
+          .map((json) => Conversation.fromJson(json, currentUserId))
+          .toList();
 
     } on DioException catch (e) {
       print('Error fetching conversations: $e');
@@ -61,7 +64,10 @@ class MessageRepository {
       final data = response.data as Map<String, dynamic>;
       final List<dynamic> jsonList =
           (data['messages'] as List?) ?? (data['data'] as List?) ?? const [];
-      return jsonList.map((json) => Message.fromJson(json)).toList();
+      return jsonList
+          .whereType<Map<String, dynamic>>()
+          .map((json) => Message.fromJson(json))
+          .toList();
     } on DioException catch (e) {
       throw Exception('Mesajlar alınamadı: ${e.response?.data['message']}');
     }
