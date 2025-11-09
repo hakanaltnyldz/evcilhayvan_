@@ -1,0 +1,5 @@
+package com.example.evcilhayvanmobil
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity: FlutterActivity()
