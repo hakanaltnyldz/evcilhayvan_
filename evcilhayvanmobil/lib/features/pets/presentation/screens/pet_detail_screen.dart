@@ -361,7 +361,7 @@ class _InfoGrid extends StatelessWidget {
         crossAxisCount: 2,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        childAspectRatio: 2.8,
+        childAspectRatio: 2.0,
       ),
       itemBuilder: (context, index) {
         final item = items[index];
@@ -387,12 +387,13 @@ class _InfoGrid extends StatelessWidget {
                 color: theme.colorScheme.primary.withOpacity(0.05),
               ),
             ),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
-                  height: 38,
-                  width: 38,
+                  height: 40,
+                  width: 40,
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
@@ -402,14 +403,16 @@ class _InfoGrid extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         item.title,
                         style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -417,6 +420,9 @@ class _InfoGrid extends StatelessWidget {
                         style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: true,
                       ),
                     ],
                   ),
