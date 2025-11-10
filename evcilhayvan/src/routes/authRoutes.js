@@ -5,12 +5,18 @@ import fs from "fs";
 import path from "path";
 import multer from "multer";
 
-import { 
-  register, login, me, 
-  uploadAvatar, verifyEmail,
-  forgotPassword, resetPassword,
+import {
+  register,
+  login,
+  me,
+  uploadAvatar,
+  verifyEmail,
+  forgotPassword,
+  resetPassword,
   updateMe,
-  getAllUsers // YENİ IMPORT
+  getAllUsers,
+  loginWithGoogle,
+  loginWithFacebook,
 } from "../controllers/authController.js";
 import { authRequired } from "../middlewares/auth.js";
 
@@ -36,6 +42,18 @@ router.post("/register", [
   body("email").isEmail().withMessage("Geçerli email gerekli"),
   body("password").isLength({ min: 6 }).withMessage("Şifre min 6 karakter olmalı"),
 ], register);
+
+router.post(
+  "/oauth/google",
+  [body("idToken").notEmpty().withMessage("Google idToken gerekli")],
+  loginWithGoogle
+);
+
+router.post(
+  "/oauth/facebook",
+  [body("accessToken").notEmpty().withMessage("Facebook accessToken gerekli")],
+  loginWithFacebook
+);
 
 router.post("/verify-email", [
   body("email").isEmail().withMessage("Geçerli email gerekli"),

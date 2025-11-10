@@ -21,6 +21,18 @@ class AuthRepository {
   final Dio _dio;
   AuthRepository(this._dio);
 
+  Future<User> _persistAndParseUser(Response response) async {
+    final token = response.data['token'] as String?;
+    final userJson = response.data['user'] as Map<String, dynamic>?;
+    if (token == null || userJson == null) {
+      throw Exception('Sunucudan beklenmeyen yanıt alındı.');
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', token);
+    return User.fromJson(userJson);
+  }
+
   // --- YENİ EKLENEN getAllUsers METODU ---
   /**
    * (AUTH) Diğer tüm kullanıcıları listeler.
@@ -63,17 +75,13 @@ class AuthRepository {
       throw Exception('Bir hata oluştu: $e');
     }
   }
-  Future<User> login(String email, String password) async { /* ... (kod aynı) ... */ 
+  Future<User> login(String email, String password) async { /* ... (kod aynı) ... */
     try {
       final response = await _dio.post(
         '/api/auth/login',
         data: { 'email': email, 'password': password },
       );
-      final String token = response.data['token'];
-      final Map<String, dynamic> userJson = response.data['user'];
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', token);
-      return User.fromJson(userJson);
+      return _persistAndParseUser(response);
     } on DioException catch (e) {
       if (e.response?.data['notVerified'] == true) {
         throw VerificationRequiredException(
@@ -105,17 +113,13 @@ class AuthRepository {
       throw Exception('Bir hata oluştu: $e');
     }
   }
-  Future<User> verifyEmail({required String email, required String code}) async { /* ... (kod aynı) ... */ 
+  Future<User> verifyEmail({required String email, required String code}) async { /* ... (kod aynı) ... */
     try {
       final response = await _dio.post(
         '/api/auth/verify-email',
         data: { 'email': email, 'code': code },
       );
-      final String token = response.data['token'];
-      final Map<String, dynamic> userJson = response.data['user'];
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', token);
-      return User.fromJson(userJson);
+      return _persistAndParseUser(response);
     } on DioException catch (e) {
       final String errorMessage = e.response?.data['message'] ?? 'Doğrulama başarısız';
       throw Exception(errorMessage);
@@ -174,7 +178,7 @@ class AuthRepository {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
   }
-  Future<User> uploadAvatar(XFile imageFile) async { /* ... (kod aynı) ... */ 
+  Future<User> uploadAvatar(XFile imageFile) async { /* ... (kod aynı) ... */
     try {
       String fileName = imageFile.path.split('/').last;
       FormData formData = FormData.fromMap({
@@ -190,6 +194,36 @@ class AuthRepository {
       return User.fromJson(response.data['user']);
     } on DioException catch (e) {
       throw Exception('Resim yüklenemedi: ${e.response?.data['message']}');
+    }
+  }
+
+  Future<User> loginWithGoogleToken(String idToken) async {
+    try {
+      final response = await _dio.post(
+        '/api/auth/oauth/google',
+        data: {'idToken': idToken},
+      );
+      return _persistAndParseUser(response);
+    } on DioException catch (e) {
+      final message = e.response?.data['message'] ?? 'Google ile giriş başarısız';
+      throw Exception(message);
+    } catch (e) {
+      throw Exception('Google ile giriş başarısız: $e');
+    }
+  }
+
+  Future<User> loginWithFacebookToken(String accessToken) async {
+    try {
+      final response = await _dio.post(
+        '/api/auth/oauth/facebook',
+        data: {'accessToken': accessToken},
+      );
+      return _persistAndParseUser(response);
+    } on DioException catch (e) {
+      final message = e.response?.data['message'] ?? 'Facebook ile giriş başarısız';
+      throw Exception(message);
+    } catch (e) {
+      throw Exception('Facebook ile giriş başarısız: $e');
     }
   }
 }

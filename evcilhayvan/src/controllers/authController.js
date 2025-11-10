@@ -1,4 +1,5 @@
 // controllers/authController.js
+import crypto from "crypto";
 import { validationResult } from "express-validator";
 import User from "../models/User.js";
 import { hashPassword, comparePassword } from "../utils/hash.js";
@@ -28,6 +29,181 @@ export async function getAllUsers(req, res) {
   }
 }
 // --- YENİ FONKSİYON BİTTİ ---
+
+
+function buildUserPayload(user) {
+  return {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    city: user.city,
+    role: user.role,
+    avatarUrl: user.avatarUrl,
+    about: user.about,
+  };
+}
+
+function sendAuthSuccess(res, user, status = 200) {
+  const token = signToken(user);
+  return res.status(status).json({
+    ok: true,
+    token,
+    user: buildUserPayload(user),
+  });
+}
+
+export async function loginWithGoogle(req, res) {
+  try {
+    const { idToken } = req.body || {};
+
+    if (!idToken) {
+      return res.status(400).json({ message: "Google idToken gerekli" });
+    }
+
+    const tokenInfoResponse = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`
+    );
+
+    if (!tokenInfoResponse.ok) {
+      return res
+        .status(401)
+        .json({ message: "Geçersiz Google oturum bilgisi" });
+    }
+
+    const payload = await tokenInfoResponse.json();
+    const audience = process.env.GOOGLE_CLIENT_ID;
+
+    if (audience && payload.aud !== audience) {
+      return res.status(401).json({ message: "Google istemcisi doğrulanamadı" });
+    }
+
+    if (payload.email_verified !== "true" && payload.email_verified !== true) {
+      return res
+        .status(401)
+        .json({ message: "Google e-postası doğrulanmamış" });
+    }
+
+    const email = payload.email?.toLowerCase();
+    if (!email) {
+      return res
+        .status(400)
+        .json({ message: "Google e-postasına erişilemedi" });
+    }
+
+    let user = await User.findOne({ email });
+    const displayName = payload.name?.trim() || email.split("@")[0];
+    const avatarUrl = payload.picture;
+
+    if (!user) {
+      const randomPassword = crypto.randomBytes(32).toString("hex");
+      user = new User({
+        name: displayName,
+        email,
+        password: await hashPassword(randomPassword),
+        avatarUrl,
+        isVerified: true,
+      });
+    } else {
+      user.name = user.name || displayName;
+      user.isVerified = true;
+      if (!user.avatarUrl && avatarUrl) {
+        user.avatarUrl = avatarUrl;
+      }
+    }
+
+    await user.save();
+
+    return sendAuthSuccess(res, user);
+  } catch (err) {
+    console.error("[loginWithGoogle]", err);
+    return res
+      .status(500)
+      .json({ message: "Google ile giriş yapılamadı", error: err.message });
+  }
+}
+
+export async function loginWithFacebook(req, res) {
+  try {
+    const { accessToken } = req.body || {};
+    if (!accessToken) {
+      return res
+        .status(400)
+        .json({ message: "Facebook accessToken gerekli" });
+    }
+
+    const appId = process.env.FACEBOOK_APP_ID;
+    const appSecret = process.env.FACEBOOK_APP_SECRET;
+
+    if (appId && appSecret) {
+      const debugResponse = await fetch(
+        `https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(
+          accessToken
+        )}&access_token=${appId}|${appSecret}`
+      );
+
+      const debugJson = await debugResponse.json();
+      const isValid = debugJson?.data?.is_valid;
+      if (!isValid) {
+        return res
+          .status(401)
+          .json({ message: "Facebook oturumu doğrulanamadı" });
+      }
+    }
+
+    const profileResponse = await fetch(
+      `https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${encodeURIComponent(
+        accessToken
+      )}`
+    );
+
+    if (!profileResponse.ok) {
+      return res
+        .status(401)
+        .json({ message: "Facebook profiline erişilemedi" });
+    }
+
+    const profile = await profileResponse.json();
+    const email = profile.email?.toLowerCase();
+
+    if (!email) {
+      return res.status(400).json({
+        message:
+          "Facebook hesabınız e-posta paylaşmadı. Lütfen e-posta izinlerini verin.",
+      });
+    }
+
+    let user = await User.findOne({ email });
+    const displayName = profile.name?.trim() || email.split("@")[0];
+    const avatarUrl = profile.picture?.data?.url;
+
+    if (!user) {
+      const randomPassword = crypto.randomBytes(32).toString("hex");
+      user = new User({
+        name: displayName,
+        email,
+        password: await hashPassword(randomPassword),
+        avatarUrl,
+        isVerified: true,
+      });
+    } else {
+      user.name = user.name || displayName;
+      user.isVerified = true;
+      if (!user.avatarUrl && avatarUrl) {
+        user.avatarUrl = avatarUrl;
+      }
+    }
+
+    await user.save();
+
+    return sendAuthSuccess(res, user);
+  } catch (err) {
+    console.error("[loginWithFacebook]", err);
+    return res.status(500).json({
+      message: "Facebook ile giriş yapılamadı",
+      error: err.message,
+    });
+  }
+}
 
 
 /* --- MEVCUT FONKSİYONLAR (Değişiklik Yok) --- */

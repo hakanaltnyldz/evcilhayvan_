@@ -1,6 +1,7 @@
 // src/controllers/messageController.js
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
+import Interaction from "../models/Interaction.js";
 import { io } from "../../server.js";
 
 /**
@@ -141,11 +142,34 @@ export async function createOrGetConversation(req, res) {
     };
 
     let conversation = await Conversation.findOne(query);
+
     if (!conversation) {
+      if (relatedPetId) {
+        const iLikedPet = await Interaction.exists({
+          fromUser: userId,
+          toPet: relatedPetId,
+          type: "like",
+        });
+
+        const theyLikedOneOfMine = await Interaction.exists({
+          fromUser: participantId,
+          toPetOwner: userId,
+          type: "like",
+        });
+
+        if (!iLikedPet || !theyLikedOneOfMine) {
+          return res.status(403).json({
+            message: "Bu ilan için henüz eşleşmediniz. Önce karşılıklı beğeni sağlayın.",
+          });
+        }
+      }
+
       conversation = await Conversation.create({
         participants: [userId, participantId],
         relatedPet: relatedPetId || null,
-        lastMessage: "",
+        lastMessage: relatedPetId
+            ? "Eşleşme sağlandı! İlk mesajı gönderin."
+            : "",
       });
     }
 
@@ -159,5 +183,33 @@ export async function createOrGetConversation(req, res) {
     res
       .status(500)
       .json({ message: "Sohbet başlatılamadı", error: err.message });
+  }
+}
+
+export async function deleteConversation(req, res) {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.sub;
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      participants: userId,
+    });
+
+    if (!conversation) {
+      return res
+        .status(404)
+        .json({ message: "Sohbet bulunamadı veya yetkiniz yok" });
+    }
+
+    await Message.deleteMany({ conversationId });
+    await conversation.deleteOne();
+
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error("[deleteConversation HATA]", err);
+    res
+      .status(500)
+      .json({ message: "Sohbet silinemedi", error: err.message });
   }
 }

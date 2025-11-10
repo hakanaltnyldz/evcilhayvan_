@@ -119,4 +119,14 @@ class MessageRepository {
       );
     }
   }
+
+  Future<void> deleteConversation(String conversationId) async {
+    try {
+      await _dio.delete('/api/conversations/$conversationId');
+    } on DioException catch (e) {
+      throw Exception(
+        'Sohbet silinemedi: ${e.response?.data['message'] ?? e.message}',
+      );
+    }
+  }
 }

@@ -6,6 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import 'package:evcilhayvanmobil/core/widgets/modern_background.dart';
+import 'package:evcilhayvanmobil/core/theme/app_palette.dart';
+
 import '../../data/repositories/pets_repository.dart';
 import '../../domain/models/pet_model.dart';
 import 'location_picker_screen.dart';
@@ -177,152 +180,350 @@ class _CreatePetScreenState extends ConsumerState<CreatePetScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    const speciesOptions = <Map<String, String>>[
+      {'label': 'Kedi', 'value': 'cat'},
+      {'label': 'Köpek', 'value': 'dog'},
+      {'label': 'Kuş', 'value': 'bird'},
+      {'label': 'Diğer', 'value': 'other'},
+    ];
+    const genderOptions = <Map<String, String>>[
+      {'label': 'Erkek', 'value': 'male'},
+      {'label': 'Dişi', 'value': 'female'},
+      {'label': 'Bilinmiyor', 'value': 'unknown'},
+    ];
+
+    InputDecoration inputDecoration({
+      required String label,
+      IconData? icon,
+      String? hint,
+      int lines = 1,
+    }) {
+      return InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: icon != null ? Icon(icon) : null,
+        filled: true,
+        fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.35),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: lines > 1 ? 18 : 0,
+        ),
+      );
+    }
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(_isEditMode ? 'İlanı Düzenle' : 'Yeni İlan Oluştur'),
+        title: Text(_isEditMode ? 'İlanı Düzenle' : 'Yeni İlan'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'İsim'),
-                  validator: (value) => (value?.isEmpty ?? true) ? 'İsim zorunludur' : null,
-                ),
-                const SizedBox(height: 16),
-                
-                DropdownButtonFormField<String>(
-                  value: _selectedSpecies,
-                  decoration: const InputDecoration(labelText: 'Tür'),
-                  items: ['cat', 'dog', 'bird', 'other'].map((species) {
-                    return DropdownMenuItem(value: species, child: Text(species));
-                  }).toList(),
-                  onChanged: (value) => setState(() => _selectedSpecies = value!),
-                ),
-                const SizedBox(height: 16),
-
-                DropdownButtonFormField<String>(
-                  value: _selectedGender,
-                  decoration: const InputDecoration(labelText: 'Cinsiyet'),
-                  items: ['male', 'female', 'unknown'].map((gender) {
-                    return DropdownMenuItem(value: gender, child: Text(gender));
-                  }).toList(),
-                  onChanged: (value) => setState(() => _selectedGender = value!),
-                ),
-                const SizedBox(height: 16),
-                
-                SwitchListTile(
-                  title: const Text('Aşılı'),
-                  value: _isVaccinated,
-                  onChanged: (bool value) {
-                    setState(() {
-                      _isVaccinated = value;
-                    });
-                  },
-                  secondary: const Icon(Icons.vaccines),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _ageController,
-                  decoration: const InputDecoration(labelText: 'Yaş (Ay Olarak)'), // "hintText: 0" kaldırıldı
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  // --- GÜNCELLEME: Validator eklendi ---
-                  validator: (value) => (value?.isEmpty ?? true) ? 'Yaş zorunludur' : null,
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _breedController,
-                  decoration: const InputDecoration(labelText: 'Cins'), // "Opsiyonel" kaldırıldı
-                  // --- GÜNCELLEME: Validator eklendi ---
-                  validator: (value) => (value?.isEmpty ?? true) ? 'Cins zorunludur' : null,
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _bioController,
-                  decoration: const InputDecoration(labelText: 'Açıklama (Opsiyonel)', alignLabelWithHint: true),
-                  maxLines: 4,
-                  // --- GÜNCELLEME: Validator yok, çünkü bu opsiyonel ---
-                ),
-                const SizedBox(height: 16),
-
-                // --- GÜNCELLEME: "Opsiyonel" kaldırıldı ---
-                const Text('Konum', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _pickLocation,
-                  icon: const Icon(Icons.map_rounded),
-                  label: Text(
-                    _selectedLocation == null
-                        ? 'Konum Seç'
-                        : 'Konumu Güncelle',
-                  ),
-                ),
-                if (_selectedLocation != null) ...[
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
-                    child: IgnorePointer(
-                      child: SizedBox(
-                        height: 200,
-                        width: double.infinity,
-                        child: GoogleMap(
-                          initialCameraPosition: CameraPosition(
-                            target: _selectedLocation!,
-                            zoom: 14,
+      body: ModernBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      gradient: LinearGradient(
+                        colors: AppPalette.heroGradient
+                            .map((c) => c.withOpacity(0.9))
+                            .toList(),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.primary.withOpacity(0.18),
+                          blurRadius: 32,
+                          offset: const Offset(0, 18),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _isEditMode
+                              ? 'İlan bilgilerini güncelle'
+                              : 'Yeni ilan oluştur',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.onPrimary,
                           ),
-                          markers: {
-                            Marker(
-                              markerId: const MarkerId('selected-location'),
-                              position: _selectedLocation!,
-                            ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Dostunun karakterini, ihtiyaçlarını ve konumunu paylaş. Renkli kart tasarımı ile ilanların öne çıksın.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onPrimary.withOpacity(0.9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(26),
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.primary.withOpacity(0.08),
+                          blurRadius: 24,
+                          offset: const Offset(0, 14),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Temel Bilgiler',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: inputDecoration(
+                            label: 'İsim',
+                            icon: Icons.pets_outlined,
+                          ),
+                          validator: (value) =>
+                              (value?.isEmpty ?? true) ? 'İsim zorunludur' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Tür',
+                          style: theme.textTheme.labelLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: speciesOptions.map((option) {
+                            return ChoiceChip(
+                              label: Text(option['label']!),
+                              selected: _selectedSpecies == option['value'],
+                              onSelected: (selected) {
+                                if (selected) {
+                                  setState(() =>
+                                      _selectedSpecies = option['value']!);
+                                }
+                              },
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Cinsiyet',
+                          style: theme.textTheme.labelLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: genderOptions.map((option) {
+                            return ChoiceChip(
+                              label: Text(option['label']!),
+                              selected: _selectedGender == option['value'],
+                              onSelected: (selected) {
+                                if (selected) {
+                                  setState(() =>
+                                      _selectedGender = option['value']!);
+                                }
+                              },
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 16),
+                        SwitchListTile.adaptive(
+                          value: _isVaccinated,
+                          contentPadding: EdgeInsets.zero,
+                          secondary: const Icon(Icons.vaccines),
+                          title: const Text('Aşıları tam'),
+                          subtitle: const Text(
+                            'Aşı bilgileri ilanda rozet olarak gösterilir.',
+                          ),
+                          onChanged: (value) {
+                            setState(() => _isVaccinated = value);
                           },
-                          zoomControlsEnabled: false,
-                          liteModeEnabled: true,
-                          myLocationButtonEnabled: false,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(26),
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.primary.withOpacity(0.08),
+                          blurRadius: 24,
+                          offset: const Offset(0, 14),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Detaylar',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _ageController,
+                          decoration: inputDecoration(
+                            label: 'Yaş (Ay)',
+                            icon: Icons.cake_outlined,
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          validator: (value) =>
+                              (value?.isEmpty ?? true) ? 'Yaş zorunludur' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _breedController,
+                          decoration: inputDecoration(
+                            label: 'Cins',
+                            icon: Icons.badge_outlined,
+                          ),
+                          validator: (value) =>
+                              (value?.isEmpty ?? true) ? 'Cins zorunludur' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _bioController,
+                          maxLines: 4,
+                          decoration: inputDecoration(
+                            label: 'Açıklama',
+                            icon: Icons.notes_outlined,
+                            hint:
+                                'Karakterini, günlük rutinini ve sahiplenme notlarını paylaş.',
+                            lines: 4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(26),
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.primary.withOpacity(0.08),
+                          blurRadius: 24,
+                          offset: const Offset(0, 14),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Konum',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: _isLoading ? null : _pickLocation,
+                          icon: const Icon(Icons.map_rounded),
+                          label: Text(
+                            _selectedLocation == null
+                                ? 'Konum Seç'
+                                : 'Konumu Güncelle',
+                          ),
+                        ),
+                        if (_selectedLocation != null) ...[
+                          const SizedBox(height: 12),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: IgnorePointer(
+                              child: SizedBox(
+                                height: 200,
+                                width: double.infinity,
+                                child: GoogleMap(
+                                  initialCameraPosition: CameraPosition(
+                                    target: _selectedLocation!,
+                                    zoom: 14,
+                                  ),
+                                  markers: {
+                                    Marker(
+                                      markerId: const MarkerId('selected-location'),
+                                      position: _selectedLocation!,
+                                    ),
+                                  },
+                                  zoomControlsEnabled: false,
+                                  liteModeEnabled: true,
+                                  myLocationButtonEnabled: false,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Seçilen konum: '
+                            '${_selectedLocation!.latitude.toStringAsFixed(5)}, '
+                            '${_selectedLocation!.longitude.toStringAsFixed(5)}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (_errorMessage != null) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.error.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        _errorMessage!,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.error,
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Seçilen konum: '
-                    '${_selectedLocation!.latitude.toStringAsFixed(5)}, '
-                    '${_selectedLocation!.longitude.toStringAsFixed(5)}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
-                        ),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: FilledButton(
+                      onPressed: _isLoading ? null : _savePet,
+                      child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(_isEditMode ? 'İlanı Güncelle' : 'İlanı Kaydet'),
+                    ),
                   ),
                 ],
-
-                const SizedBox(height: 24),
-
-                if (_errorMessage != null)
-                  Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
-                const SizedBox(height: 16),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _savePet,
-                    child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : Text(_isEditMode ? 'Güncelle' : 'İlanı Kaydet'),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
