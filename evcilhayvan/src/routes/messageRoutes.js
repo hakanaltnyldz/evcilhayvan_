@@ -7,6 +7,7 @@ import {
   getMessages,
   sendMessage,
   createOrGetConversation,
+  deleteConversation,
 } from "../controllers/messageController.js";
 
 const router = Router();
@@ -38,6 +39,12 @@ router.post(
   "/",
   [body("participantId").isMongoId().withMessage("participantId gerekli")],
   createOrGetConversation
+);
+
+router.delete(
+  "/:conversationId",
+  [param("conversationId").isMongoId().withMessage("Geçersiz Sohbet ID")],
+  deleteConversation
 );
 
 export default router;

@@ -27,6 +27,7 @@ class MessagesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final conversationsAsync = ref.watch(conversationsProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -61,29 +62,93 @@ class MessagesScreen extends ConsumerWidget {
                           separatorBuilder: (_, __) => const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             final conv = conversations[index];
-                            return _ConversationCard(
-                              title: conv.otherParticipant.name,
-                              subtitle: conv.lastMessage.isNotEmpty
-                                  ? conv.lastMessage
-                                  : 'Sohbete başla',
-                              relatedPet: conv.relatedPet,
-                              relatedPetId: conv.relatedPetId,
-                              updatedAt: conv.updatedAt,
-                              avatarUrl: _resolveAvatarUrl(
-                                conv.otherParticipant.avatarUrl,
-                              ),
-                              onTap: () {
-                                context.pushNamed(
-                                  'chat',
-                                  pathParameters: {'conversationId': conv.id},
-                                  extra: {
-                                    'name': conv.otherParticipant.name,
-                                    'avatar': _resolveAvatarUrl(
-                                      conv.otherParticipant.avatarUrl,
-                                    ),
-                                  },
-                                );
+                            return Dismissible(
+                              key: ValueKey(conv.id),
+                              direction: DismissDirection.endToStart,
+                              confirmDismiss: (_) async {
+                                return await showDialog<bool>(
+                                      context: context,
+                                      builder: (dialogContext) => AlertDialog(
+                                        title: const Text('Sohbeti sil'),
+                                        content: const Text(
+                                          'Bu sohbeti kalıcı olarak silmek istediğine emin misin?',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.of(dialogContext).pop(false),
+                                            child: const Text('Vazgeç'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () => Navigator.of(dialogContext).pop(true),
+                                            child: const Text('Sil'),
+                                          ),
+                                        ],
+                                      ),
+                                    ) ??
+                                    false;
                               },
+                              onDismissed: (_) async {
+                                try {
+                                  await ref
+                                      .read(messageRepositoryProvider)
+                                      .deleteConversation(conv.id);
+                                  ref.invalidate(conversationsProvider);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Sohbet silindi'),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Sohbet silinemedi: $e')),
+                                    );
+                                  }
+                                }
+                              },
+                              background: Container(
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.symmetric(horizontal: 24),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(24),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      theme.colorScheme.error.withOpacity(0.8),
+                                      theme.colorScheme.error.withOpacity(0.6),
+                                    ],
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.delete_forever,
+                                  color: theme.colorScheme.onError,
+                                ),
+                              ),
+                              child: _ConversationCard(
+                                title: conv.otherParticipant.name,
+                                subtitle: conv.lastMessage.isNotEmpty
+                                    ? conv.lastMessage
+                                    : 'Sohbete başla',
+                                relatedPet: conv.relatedPet,
+                                relatedPetId: conv.relatedPetId,
+                                updatedAt: conv.updatedAt,
+                                avatarUrl: _resolveAvatarUrl(
+                                  conv.otherParticipant.avatarUrl,
+                                ),
+                                onTap: () {
+                                  context.pushNamed(
+                                    'chat',
+                                    pathParameters: {'conversationId': conv.id},
+                                    extra: {
+                                      'name': conv.otherParticipant.name,
+                                      'avatar': _resolveAvatarUrl(
+                                        conv.otherParticipant.avatarUrl,
+                                      ),
+                                    },
+                                  );
+                                },
+                              ),
                             );
                           },
                         ),
