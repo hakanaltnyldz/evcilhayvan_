@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -75,6 +76,22 @@ class SocialAuthService {
         displayName: account.displayName,
         avatarUrl: account.photoUrl,
       );
+    } on PlatformException catch (error) {
+      if (error.code == 'sign_in_failed' && error.message != null) {
+        final needsPlayServices = error.message!.contains('12500') ||
+            error.message!.toLowerCase().contains('google play');
+        if (needsPlayServices && !kIsWeb) {
+          throw SocialAuthException(
+            'Google girişi için bu cihazda Google Play Hizmetleri yüklü olmalıdır. '
+            'Lütfen Google Play Hizmetleri bulunan bir cihaz veya emülatör kullanın.',
+          );
+        }
+      }
+      throw SocialAuthException('Google girişi başarısız: ${error.message ?? error.code}');
+    } on MissingPluginException {
+      throw SocialAuthException(
+        'Google girişi bu platformda desteklenmiyor. Lütfen mobil cihazda deneyin.',
+      );
     } catch (error) {
       if (error is SocialAuthException) rethrow;
       throw SocialAuthException('Google girişi başarısız: $error');
@@ -119,6 +136,19 @@ class SocialAuthService {
             result.message ?? 'Facebook girişi başarısız oldu.',
           );
       }
+    } on MissingPluginException {
+      throw SocialAuthException(
+        'Facebook girişi bu platformda desteklenmiyor. Lütfen mobil cihazda deneyin.',
+      );
+    } on PlatformException catch (error) {
+      final isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+      if (isAndroid) {
+        throw SocialAuthException(
+          'Facebook uygulaması ya da Google Play Hizmetleri eksik görünüyor. '
+          'Lütfen cihazınızda Facebook uygulamasının kurulu olduğundan veya geçerli bir tarayıcı bulunduğundan emin olun.',
+        );
+      }
+      throw SocialAuthException('Facebook girişi başarısız: ${error.message ?? error.code}');
     } catch (error) {
       if (error is SocialAuthException) rethrow;
       throw SocialAuthException('Facebook girişi başarısız: $error');
