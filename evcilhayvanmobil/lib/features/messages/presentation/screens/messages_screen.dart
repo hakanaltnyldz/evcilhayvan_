@@ -60,7 +60,7 @@ class MessagesScreen extends ConsumerWidget {
                           padding: const EdgeInsets.only(bottom: 24, top: 12),
                           itemCount: conversations.length,
                           separatorBuilder: (_, __) => const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
+                          itemBuilder: (itemContext, index) {
                             final conv = conversations[index];
                             return Dismissible(
                               key: ValueKey(conv.id),
@@ -136,8 +136,8 @@ class MessagesScreen extends ConsumerWidget {
                                 avatarUrl: _resolveAvatarUrl(
                                   conv.otherParticipant.avatarUrl,
                                 ),
-                                onTap: () {
-                                  context.pushNamed(
+                                onTap: () async {
+                                  final result = await itemContext.pushNamed(
                                     'chat',
                                     pathParameters: {'conversationId': conv.id},
                                     extra: {
@@ -147,6 +147,15 @@ class MessagesScreen extends ConsumerWidget {
                                       ),
                                     },
                                   );
+
+                                  if (result == true && itemContext.mounted) {
+                                    ScaffoldMessenger.of(itemContext).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Sohbet silindi'),
+                                      ),
+                                    );
+                                    ref.invalidate(conversationsProvider);
+                                  }
                                 },
                               ),
                             );

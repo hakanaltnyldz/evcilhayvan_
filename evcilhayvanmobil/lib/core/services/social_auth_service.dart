@@ -78,16 +78,31 @@ class SocialAuthService {
       );
     } on PlatformException catch (error) {
       if (error.code == 'sign_in_failed' && error.message != null) {
-        final needsPlayServices = error.message!.contains('12500') ||
-            error.message!.toLowerCase().contains('google play');
-        if (needsPlayServices && !kIsWeb) {
+        final message = error.message!.toLowerCase();
+        final missingPlayServices =
+            message.contains('google play services are unavailable') ||
+                message.contains('google play services are not available') ||
+                message.contains('google play');
+        if (missingPlayServices && !kIsWeb) {
           throw SocialAuthException(
             'Google girişi için bu cihazda Google Play Hizmetleri yüklü olmalıdır. '
             'Lütfen Google Play Hizmetleri bulunan bir cihaz veya emülatör kullanın.',
           );
         }
+
+        final developerError = message.contains('12500') ||
+            message.contains('developer error') ||
+            message.contains('status{statuscode=unknown status code') ||
+            message.contains('default_sign_in failed');
+        if (developerError) {
+          throw SocialAuthException(
+            'Google girişi başarısız oldu. Lütfen SHA-1 debug anahtarını ve OAuth istemci yapılandırmasını kontrol edin.',
+          );
+        }
       }
-      throw SocialAuthException('Google girişi başarısız: ${error.message ?? error.code}');
+      throw SocialAuthException(
+        'Google girişi başarısız: ${error.message ?? error.code}',
+      );
     } on MissingPluginException {
       throw SocialAuthException(
         'Google girişi bu platformda desteklenmiyor. Lütfen mobil cihazda deneyin.',
