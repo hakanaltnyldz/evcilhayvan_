@@ -132,6 +132,41 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  Future<void> _deleteConversation() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sohbeti sil'),
+        content: const Text(
+          'Bu sohbeti kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await ref.read(messageRepositoryProvider).deleteConversation(
+            widget.conversationId,
+          );
+      ref.invalidate(conversationsProvider);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      _showInfoSnack('Sohbet silinemedi: $e');
+    }
+  }
+
   void _showConversationActions() {
     showModalBottomSheet<void>(
       context: context,
@@ -174,8 +209,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ListTile(
                   leading: const Icon(Icons.delete_outline),
                   title: const Text('Sohbeti listeden sil'),
-                  subtitle: const Text('Sohbetler ekranında kaydırarak silebilirsin.'),
-                  onTap: () => Navigator.pop(context),
+                  subtitle: const Text('Sohbetler ekranından da silebilirsin.'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _deleteConversation();
+                  },
                 ),
               ],
             ),
@@ -310,6 +348,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final repo = ref.read(messageRepositoryProvider);
       final fetched = await repo.getMessages(widget.conversationId);
       fetched.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      if (!mounted) return;
       setState(() {
         _messages
           ..clear()
@@ -317,15 +356,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       });
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 

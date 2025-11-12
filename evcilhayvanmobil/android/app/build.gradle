@@ -22,6 +22,10 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
+def googleMapsApiKey = localProperties.getProperty('google.mapsApiKey', '')
+def facebookAppId = localProperties.getProperty('facebook.appId', '')
+def facebookClientToken = localProperties.getProperty('facebook.clientToken', '')
+
 android {
     namespace "com.example.evcilhayvanmobil"
     compileSdk flutter.compileSdkVersion
@@ -49,6 +53,17 @@ android {
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+
+        manifestPlaceholders += [
+                googleMapsApiKey: googleMapsApiKey,
+                facebookAppId   : facebookAppId,
+                facebookClientToken: facebookClientToken,
+        ]
+
+        resValue "string", "google_maps_api_key", googleMapsApiKey
+        resValue "string", "facebook_app_id", facebookAppId
+        resValue "string", "facebook_client_token", facebookClientToken
+        resValue "string", "fb_login_protocol_scheme", facebookAppId ? "fb${facebookAppId}" : ""
     }
 
     buildTypes {

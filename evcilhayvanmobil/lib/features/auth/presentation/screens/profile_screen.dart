@@ -146,14 +146,6 @@ class ProfileScreen extends ConsumerWidget {
                         label: 'Beğeniler',
                         value: 'Yeni',
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => context.pushNamed('create-pet'),
-                          icon: const Icon(Icons.add_circle_outline),
-                          label: const Text('Yeni ilan'),
-                        ),
-                      ),
                     ],
                   ),
                 ),

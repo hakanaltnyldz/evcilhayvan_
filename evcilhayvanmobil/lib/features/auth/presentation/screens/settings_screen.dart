@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:evcilhayvanmobil/core/widgets/modern_background.dart';
 import 'package:evcilhayvanmobil/features/auth/data/repositories/auth_repository.dart';
@@ -14,6 +15,13 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  static const _notificationsKey = 'settings.notifications_enabled';
+  static const _matchAlertsKey = 'settings.match_alerts_enabled';
+  static const _autoStartChatKey = 'settings.auto_start_chat';
+  static const _compactCardsKey = 'settings.compact_cards';
+
+  SharedPreferences? _prefs;
+  bool _isLoadingPrefs = true;
   bool _notificationsEnabled = true;
   bool _matchAlertsEnabled = true;
   bool _autoStartChat = true;
@@ -23,6 +31,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _prefs = prefs;
+      _notificationsEnabled =
+          prefs.getBool(_notificationsKey) ?? _notificationsEnabled;
+      _matchAlertsEnabled =
+          prefs.getBool(_matchAlertsKey) ?? _matchAlertsEnabled;
+      _autoStartChat = prefs.getBool(_autoStartChatKey) ?? _autoStartChat;
+      _compactCards = prefs.getBool(_compactCardsKey) ?? _compactCards;
+      _isLoadingPrefs = false;
+    });
+  }
+
+  void _updatePreference(String key, bool value, void Function() apply) {
+    setState(apply);
+    _prefs?.setBool(key, value);
   }
 
   @override
@@ -39,7 +72,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
       body: ModernBackground(
         child: SafeArea(
-          child: ListView(
+          child: _isLoadingPrefs
+              ? const Center(child: CircularProgressIndicator())
+              : ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
             children: [
               _SettingsHeader(userName: user?.name, email: user?.email),
@@ -72,7 +107,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     title: const Text('Sohbet bildirimleri'),
                     subtitle: const Text('Yeni mesaj ve sohbet isteklerinden haberdar ol'),
                     onChanged: (value) {
-                      setState(() => _notificationsEnabled = value);
+                      _updatePreference(
+                        _notificationsKey,
+                        value,
+                        () => _notificationsEnabled = value,
+                      );
                     },
                   ),
                   SwitchListTile.adaptive(
@@ -80,7 +119,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     title: const Text('Eşleşme uyarıları'),
                     subtitle: const Text('Yeni eşleşmelerde anında bildirim al'),
                     onChanged: (value) {
-                      setState(() => _matchAlertsEnabled = value);
+                      _updatePreference(
+                        _matchAlertsKey,
+                        value,
+                        () => _matchAlertsEnabled = value,
+                      );
                     },
                   ),
                   SwitchListTile.adaptive(
@@ -89,7 +132,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     subtitle:
                         const Text('Eşleşme oluştuğunda sohbet ekranını hızlıca aç'),
                     onChanged: (value) {
-                      setState(() => _autoStartChat = value);
+                      _updatePreference(
+                        _autoStartChatKey,
+                        value,
+                        () => _autoStartChat = value,
+                      );
                       if (!value) {
                         _showSnack('Sohbetler artık sadece manuel olarak açılacak.');
                       }
@@ -107,7 +154,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     title: const Text('Kartları kompakt göster'),
                     subtitle: const Text('Liste görünümünde daha fazla içerik gör'),
                     onChanged: (value) {
-                      setState(() => _compactCards = value);
+                      _updatePreference(
+                        _compactCardsKey,
+                        value,
+                        () => _compactCards = value,
+                      );
                     },
                   ),
                   ListTile(
