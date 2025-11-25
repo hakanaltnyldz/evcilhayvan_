@@ -9,14 +9,15 @@ import {
   getStoreProducts,
   getMyProducts,
   getStoreProfile,
+  listStores,
+  listAllProducts,
 } from "../controllers/storeController.js";
 
 const router = Router();
 
-router.use(authRequired());
-
 router.post(
   "/apply",
+  authRequired(),
   [
     body("storeName").notEmpty().withMessage("Mağaza adı gerekli"),
     body("description").optional().isString(),
@@ -25,7 +26,7 @@ router.post(
   applySeller
 );
 
-router.get("/me", getMyStore);
+router.get("/me", authRequired(), getMyStore);
 
 router.post(
   "/me/products",
@@ -45,6 +46,10 @@ router.get(
   authRequired(["seller", "admin"]),
   getMyProducts
 );
+
+router.get("/products", listAllProducts);
+
+router.get("/", listStores);
 
 router.get(
   "/:storeId/products",

@@ -22,6 +22,8 @@ import '../features/pets/domain/models/pet_model.dart';
 import '../features/pets/presentation/screens/create_pet_screen.dart';
 import '../features/pets/presentation/screens/home_screen.dart';
 import '../features/pets/presentation/screens/pet_detail_screen.dart';
+import '../features/store/presentation/screens/store_detail_screen.dart';
+import '../features/store/presentation/screens/store_screen.dart';
 
 final router = GoRouter(
   initialLocation: '/login',
@@ -44,6 +46,11 @@ final router = GoRouter(
           path: '/connect',
           name: 'connect',
           builder: (context, state) => const ConnectScreen(),
+        ),
+        GoRoute(
+          path: '/store',
+          name: 'store',
+          builder: (context, state) => const StoreScreen(),
         ),
         GoRoute(
           path: '/mating',
@@ -149,6 +156,14 @@ final router = GoRouter(
       path: '/edit-profile',
       name: 'edit-profile',
       builder: (context, state) => const EditProfileScreen(),
+    ),
+    GoRoute(
+      path: '/store/:id',
+      name: 'store-detail',
+      builder: (context, state) {
+        final String storeId = state.pathParameters['id']!;
+        return StoreDetailScreen(storeId: storeId);
+      },
     ),
   ],
 );

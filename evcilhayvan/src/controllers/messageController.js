@@ -86,9 +86,11 @@ export async function sendMessage(req, res) {
         .json({ message: "Sohbet bulunamadı veya yetkiniz yok" });
     }
 
-    // Yeni mesaj atıldığında silme listelerini temizleyip sohbeti tekrar görünür yap
+    // Yeni mesaj atıldığında sadece gönderen için gizleme kaldırılır
     if (conversation.deletedFor && conversation.deletedFor.length > 0) {
-      conversation.deletedFor = [];
+      conversation.deletedFor = conversation.deletedFor.filter(
+        (id) => id.toString() !== senderId
+      );
     }
 
     const message = await Message.create({
@@ -184,7 +186,9 @@ export async function createOrGetConversation(req, res) {
 
     // Silinmiş olsa bile yeniden başlatırken görünür hale getir
     if (conversation.deletedFor && conversation.deletedFor.length > 0) {
-      conversation.deletedFor = [];
+      conversation.deletedFor = conversation.deletedFor.filter(
+        (id) => id.toString() !== userId
+      );
       await conversation.save();
     }
 

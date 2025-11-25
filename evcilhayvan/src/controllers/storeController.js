@@ -70,6 +70,58 @@ export async function applySeller(req, res) {
   }
 }
 
+export async function listStores(_req, res) {
+  try {
+    const stores = await Store.find({ isActive: true })
+      .populate("owner", "name avatarUrl city")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const counts = await Product.aggregate([
+      { $match: { isActive: true } },
+      { $group: { _id: "$store", count: { $sum: 1 } } },
+    ]);
+
+    const countMap = new Map(
+      counts.map((item) => [item._id?.toString(), item.count || 0])
+    );
+
+    const storesWithCounts = stores.map((store) => ({
+      ...store,
+      productCount: countMap.get(store._id.toString()) || 0,
+    }));
+
+    return res.status(200).json({ ok: true, stores: storesWithCounts });
+  } catch (err) {
+    console.error("[listStores]", err);
+    return res
+      .status(500)
+      .json({ message: "Mağazalar alınamadı", error: err.message });
+  }
+}
+
+export async function listAllProducts(req, res) {
+  try {
+    const { storeId } = req.query || {};
+    const filter = { isActive: true };
+
+    if (storeId) {
+      filter.store = storeId;
+    }
+
+    const products = await Product.find(filter)
+      .populate({ path: "store", select: "name logoUrl owner" })
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ ok: true, products });
+  } catch (err) {
+    console.error("[listAllProducts]", err);
+    return res
+      .status(500)
+      .json({ message: "Ürünler getirilemedi", error: err.message });
+  }
+}
+
 export async function getMyStore(req, res) {
   try {
     const userId = req.user.sub;
@@ -132,9 +184,11 @@ export async function getStoreProducts(req, res) {
       return res.status(404).json({ message: "Mağaza bulunamadı" });
     }
 
-    const products = await Product.find({ store: storeId, isActive: true }).sort({
-      createdAt: -1,
-    });
+    const products = await Product.find({ store: storeId, isActive: true })
+      .populate({ path: "store", select: "name logoUrl" })
+      .sort({
+        createdAt: -1,
+      });
 
     return res.status(200).json({ ok: true, products });
   } catch (err) {
