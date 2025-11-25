@@ -22,6 +22,10 @@ import '../features/pets/domain/models/pet_model.dart';
 import '../features/pets/presentation/screens/create_pet_screen.dart';
 import '../features/pets/presentation/screens/home_screen.dart';
 import '../features/pets/presentation/screens/pet_detail_screen.dart';
+import '../features/store/presentation/screens/add_product_screen.dart';
+import '../features/store/presentation/screens/apply_seller_screen.dart';
+import '../features/store/presentation/screens/store_detail_screen.dart';
+import '../features/store/presentation/screens/store_home_screen.dart';
 
 final router = GoRouter(
   initialLocation: '/login',
@@ -49,6 +53,11 @@ final router = GoRouter(
           path: '/mating',
           name: 'mating',
           builder: (context, state) => const MatingScreen(),
+        ),
+        GoRoute(
+          path: '/store',
+          name: 'store',
+          builder: (context, state) => const StoreHomeScreen(),
         ),
         GoRoute(
           path: '/profile',
@@ -149,6 +158,24 @@ final router = GoRouter(
       path: '/edit-profile',
       name: 'edit-profile',
       builder: (context, state) => const EditProfileScreen(),
+    ),
+    GoRoute(
+      path: '/store/apply',
+      name: 'store-apply',
+      builder: (context, state) => const ApplySellerScreen(),
+    ),
+    GoRoute(
+      path: '/store/add',
+      name: 'store-add-product',
+      builder: (context, state) => const AddProductScreen(),
+    ),
+    GoRoute(
+      path: '/store/:storeId',
+      name: 'store-detail',
+      builder: (context, state) {
+        final id = state.pathParameters['storeId']!;
+        return StoreDetailScreen(storeId: id);
+      },
     ),
   ],
 );

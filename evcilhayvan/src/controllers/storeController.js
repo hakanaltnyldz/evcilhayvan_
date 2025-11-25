@@ -17,6 +17,40 @@ function buildUserPayload(user) {
   };
 }
 
+export async function listStores(_req, res) {
+  try {
+    const stores = await Store.find({ isActive: true })
+      .populate("owner", "name avatarUrl city role")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ ok: true, stores });
+  } catch (err) {
+    console.error("[listStores]", err);
+    return res
+      .status(500)
+      .json({ message: "Mağaza listesi alınamadı", error: err.message });
+  }
+}
+
+export async function listProducts(_req, res) {
+  try {
+    const products = await Product.find({ isActive: true })
+      .populate({
+        path: "store",
+        select: "name logoUrl owner description isActive",
+        populate: { path: "owner", select: "name avatarUrl city role" },
+      })
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ ok: true, products });
+  } catch (err) {
+    console.error("[listProducts]", err);
+    return res
+      .status(500)
+      .json({ message: "Ürün listesi alınamadı", error: err.message });
+  }
+}
+
 export async function applySeller(req, res) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -56,12 +90,14 @@ export async function applySeller(req, res) {
 
     const token = signToken(user);
 
-    return res.status(200).json({
-      ok: true,
-      token,
-      user: buildUserPayload(user),
-      store,
-    });
+    const populatedStore = await Store.findById(store._id).populate(
+      "owner",
+      "name avatarUrl city role"
+    );
+
+    return res
+      .status(200)
+      .json({ ok: true, token, user: buildUserPayload(user), store: populatedStore });
   } catch (err) {
     console.error("[applySeller]", err);
     return res
@@ -73,7 +109,10 @@ export async function applySeller(req, res) {
 export async function getMyStore(req, res) {
   try {
     const userId = req.user.sub;
-    const store = await Store.findOne({ owner: userId });
+    const store = await Store.findOne({ owner: userId }).populate(
+      "owner",
+      "name avatarUrl city"
+    );
 
     if (!store) {
       return res
@@ -127,7 +166,10 @@ export async function getStoreProducts(req, res) {
   try {
     const { storeId } = req.params;
 
-    const store = await Store.findById(storeId);
+    const store = await Store.findById(storeId).populate(
+      "owner",
+      "name avatarUrl city"
+    );
     if (!store) {
       return res.status(404).json({ message: "Mağaza bulunamadı" });
     }

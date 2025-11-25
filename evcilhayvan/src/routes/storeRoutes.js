@@ -3,16 +3,36 @@ import { Router } from "express";
 import { body, param } from "express-validator";
 import { authRequired } from "../middlewares/auth.js";
 import {
-  applySeller,
-  getMyStore,
   addProduct,
-  getStoreProducts,
+  applySeller,
   getMyProducts,
+  getMyStore,
+  getStoreProducts,
   getStoreProfile,
+  listProducts,
+  listStores,
 } from "../controllers/storeController.js";
 
 const router = Router();
 
+// Public keşif uçları
+router.get("/discover", listStores);
+router.get("/feed", listProducts);
+
+// Mağaza detay ve ürünleri (auth opsiyonel)
+router.get(
+  "/:storeId/products",
+  [param("storeId").isMongoId().withMessage("Geçersiz mağaza ID")],
+  getStoreProducts
+);
+
+router.get(
+  "/:storeId",
+  [param("storeId").isMongoId().withMessage("Geçersiz mağaza ID")],
+  getStoreProfile
+);
+
+// Bu noktadan sonrası için kimlik doğrulama zorunlu
 router.use(authRequired());
 
 router.post(
@@ -44,18 +64,6 @@ router.get(
   "/me/products",
   authRequired(["seller", "admin"]),
   getMyProducts
-);
-
-router.get(
-  "/:storeId/products",
-  [param("storeId").isMongoId().withMessage("Geçersiz mağaza ID")],
-  getStoreProducts
-);
-
-router.get(
-  "/:storeId",
-  [param("storeId").isMongoId().withMessage("Geçersiz mağaza ID")],
-  getStoreProfile
 );
 
 export default router;
