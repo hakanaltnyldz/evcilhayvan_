@@ -19,6 +19,9 @@ class StoreHomeScreen extends ConsumerWidget {
     final feedAsync = ref.watch(storeFeedProvider);
     final storesAsync = ref.watch(storeDiscoverProvider);
     final myStoreAsync = user != null ? ref.watch(myStoreProvider) : null;
+    final myProductsAsync = user?.role == 'seller'
+        ? ref.watch(myProductsProvider)
+        : null;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -42,6 +45,8 @@ class StoreHomeScreen extends ConsumerWidget {
                 ref.refresh(storeFeedProvider.future),
                 ref.refresh(storeDiscoverProvider.future),
                 if (myStoreAsync != null) ref.refresh(myStoreProvider.future),
+                if (myProductsAsync != null)
+                  ref.refresh(myProductsProvider.future),
               ]);
             },
             child: ListView(
@@ -64,9 +69,23 @@ class StoreHomeScreen extends ConsumerWidget {
                     ),
                     error: (error, _) => _SectionCard(
                       title: 'Mağaza',
-                      child: Text('Mağazanız getirilemedi: $error'),
+                    child: Text('Mağazanız getirilemedi: $error'),
                     ),
                   ),
+                if (myProductsAsync != null) ...[
+                  const SizedBox(height: 12),
+                  myProductsAsync.when(
+                    data: (products) => _MyProductsSection(products: products),
+                    loading: () => const _SectionCard(
+                      title: 'Ürünlerim',
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                    error: (e, _) => _SectionCard(
+                      title: 'Ürünlerim',
+                      child: Text('Ürünler getirilemedi: $e'),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 storesAsync.when(
                   data: (stores) => _StoreCarousel(stores: stores),
@@ -90,6 +109,111 @@ class StoreHomeScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MyProductsSection extends ConsumerWidget {
+  final List<ProductModel> products;
+  const _MyProductsSection({required this.products});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return _SectionCard(
+      title: 'Ürünlerim',
+      trailing: TextButton.icon(
+        onPressed: () => context.pushNamed('store-add-product'),
+        icon: const Icon(Icons.add),
+        label: const Text('Yeni ürün'),
+      ),
+      child: products.isEmpty
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Mağazanıza henüz ürün eklemediniz.'),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: () => context.pushNamed('store-add-product'),
+                  child: const Text('İlk ürünü ekle'),
+                )
+              ],
+            )
+          : Column(
+              children: products
+                  .map(
+                    (p) => Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: theme.colorScheme.surface,
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.colorScheme.primary.withOpacity(0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: (p.photos.isNotEmpty)
+                                ? Image.network(
+                                    p.photos.first,
+                                    width: 68,
+                                    height: 68,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        _PlaceholderBox(title: p.title),
+                                  )
+                                : _PlaceholderBox(title: p.title),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  p.title,
+                                  style: theme.textTheme.titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                                if ((p.description ?? '').isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Text(
+                                      p.description!,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodyMedium,
+                                    ),
+                                  ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Text(
+                                      '₺${p.price.toStringAsFixed(2)}',
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text('Stok: ${p.stock}'),
+                                  ],
+                                )
+                              ],
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
     );
   }
 }

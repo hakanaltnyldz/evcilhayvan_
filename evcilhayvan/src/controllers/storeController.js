@@ -38,11 +38,14 @@ export async function listProducts(_req, res) {
       .populate({
         path: "store",
         select: "name logoUrl owner description isActive",
+        match: { isActive: true },
         populate: { path: "owner", select: "name avatarUrl city role" },
       })
       .sort({ createdAt: -1 });
 
-    return res.status(200).json({ ok: true, products });
+    const activeProducts = products.filter((p) => Boolean(p.store));
+
+    return res.status(200).json({ ok: true, products: activeProducts });
   } catch (err) {
     console.error("[listProducts]", err);
     return res
@@ -172,6 +175,10 @@ export async function getStoreProducts(req, res) {
     );
     if (!store) {
       return res.status(404).json({ message: "Mağaza bulunamadı" });
+    }
+
+    if (!store.isActive) {
+      return res.status(403).json({ message: "Mağaza aktif değil" });
     }
 
     const products = await Product.find({ store: storeId, isActive: true }).sort({
