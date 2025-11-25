@@ -14,7 +14,7 @@ export async function getMyConversations(req, res) {
 
     const conversations = await Conversation.find({
       participants: userId,
-      deletedFor: { $ne: userId },
+      deletedFor: { $nin: [userId] },
     })
       .populate("participants", "name avatarUrl email")
       .populate("relatedPet", "name photos")
@@ -41,7 +41,7 @@ export async function getMessages(req, res) {
     const conversation = await Conversation.findOne({
       _id: conversationId,
       participants: userId,
-      deletedFor: { $ne: userId },
+      deletedFor: { $nin: [userId] },
     });
     if (!conversation) {
       return res

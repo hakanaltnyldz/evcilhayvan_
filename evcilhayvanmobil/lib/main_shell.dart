@@ -21,16 +21,17 @@ class _MainShellState extends ConsumerState<MainShell> {
   static const List<String?> _routeNames = [
     'messages', // 0: Sohbetler
     'home', // 1: Sahiplen
-    null, // 2: FAB alanı
-    'mating', // 3: Çiftleştir
-    'profile', // 4: Profil
+    'store', // 2: Mağaza
+    null, // 3: FAB alanı
+    'mating', // 4: Çiftleştir
+    'profile', // 5: Profil
   ];
 
   void _onItemTapped(int index, BuildContext context) {
     final currentUser = ref.read(authProvider);
-    if (index == 2) return;
+    if (index == 3) return;
 
-    if (currentUser == null && (index == 0 || index == 3 || index == 4)) {
+    if (currentUser == null && (index == 0 || index == 4 || index == 5)) {
       context.goNamed('login');
       return;
     }
@@ -48,10 +49,12 @@ class _MainShellState extends ConsumerState<MainShell> {
       _selectedIndex = 0;
     } else if (location == '/' || location.startsWith('/home')) {
       _selectedIndex = 1;
+    } else if (location.startsWith('/store')) {
+      _selectedIndex = 2;
     } else if (location.startsWith('/mating')) {
-      _selectedIndex = 3;
-    } else if (location.startsWith('/profile')) {
       _selectedIndex = 4;
+    } else if (location.startsWith('/profile')) {
+      _selectedIndex = 5;
     } else {
       _selectedIndex = 1; // Varsayılan: Sahiplen
     }
@@ -137,6 +140,11 @@ class _MainShellState extends ConsumerState<MainShell> {
                     icon: Icon(Icons.pets_outlined),
                     activeIcon: Icon(Icons.pets),
                     label: 'Sahiplen',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.storefront_outlined),
+                    activeIcon: Icon(Icons.storefront),
+                    label: 'Mağaza',
                   ),
                   BottomNavigationBarItem(
                     icon: Icon(Icons.add, color: Colors.transparent),

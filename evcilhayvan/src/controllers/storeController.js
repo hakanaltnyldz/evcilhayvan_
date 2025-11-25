@@ -17,6 +17,35 @@ function buildUserPayload(user) {
   };
 }
 
+export async function listStores(_req, res) {
+  try {
+    const stores = await Store.find({ isActive: true })
+      .populate("owner", "name avatarUrl city")
+      .sort({ createdAt: -1 });
+
+    const storesWithCounts = await Promise.all(
+      stores.map(async (store) => {
+        const productCount = await Product.countDocuments({
+          store: store._id,
+          isActive: true,
+        });
+
+        return {
+          ...store.toObject(),
+          productCount,
+        };
+      })
+    );
+
+    return res.status(200).json({ ok: true, stores: storesWithCounts });
+  } catch (err) {
+    console.error("[listStores]", err);
+    return res
+      .status(500)
+      .json({ message: "Mağazalar getirilemedi", error: err.message });
+  }
+}
+
 export async function applySeller(req, res) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {

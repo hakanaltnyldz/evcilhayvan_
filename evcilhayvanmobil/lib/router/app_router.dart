@@ -22,6 +22,11 @@ import '../features/pets/domain/models/pet_model.dart';
 import '../features/pets/presentation/screens/create_pet_screen.dart';
 import '../features/pets/presentation/screens/home_screen.dart';
 import '../features/pets/presentation/screens/pet_detail_screen.dart';
+import '../features/store/domain/store_model.dart';
+import '../features/store/presentation/screens/add_product_screen.dart';
+import '../features/store/presentation/screens/seller_application_screen.dart';
+import '../features/store/presentation/screens/store_detail_screen.dart';
+import '../features/store/presentation/screens/store_screen.dart';
 
 final router = GoRouter(
   initialLocation: '/login',
@@ -39,6 +44,11 @@ final router = GoRouter(
           path: '/',
           name: 'home',
           builder: (context, state) => const HomeScreen(),
+        ),
+        GoRoute(
+          path: '/store',
+          name: 'store',
+          builder: (context, state) => const StoreScreen(),
         ),
         GoRoute(
           path: '/connect',
@@ -59,6 +69,15 @@ final router = GoRouter(
           path: '/messages',
           name: 'messages',
           builder: (context, state) => const MessagesScreen(),
+        ),
+        GoRoute(
+          path: '/store/:storeId',
+          name: 'store-detail',
+          builder: (context, state) {
+            final storeId = state.pathParameters['storeId']!;
+            final store = state.extra is StoreModel ? state.extra as StoreModel : null;
+            return StoreDetailScreen(storeId: storeId, store: store);
+          },
         ),
       ],
     ),
@@ -94,6 +113,16 @@ final router = GoRouter(
         final String email = state.extra as String;
         return ResetPasswordScreen(email: email);
       },
+    ),
+    GoRoute(
+      path: '/store-apply',
+      name: 'seller-apply',
+      builder: (context, state) => const SellerApplicationScreen(),
+    ),
+    GoRoute(
+      path: '/store/add-product',
+      name: 'add-product',
+      builder: (context, state) => const AddProductScreen(),
     ),
     GoRoute(
       path: '/create-pet',

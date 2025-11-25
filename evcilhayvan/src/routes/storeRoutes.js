@@ -9,9 +9,12 @@ import {
   getStoreProducts,
   getMyProducts,
   getStoreProfile,
+  listStores,
 } from "../controllers/storeController.js";
 
 const router = Router();
+
+router.get("/", listStores);
 
 router.use(authRequired());
 
