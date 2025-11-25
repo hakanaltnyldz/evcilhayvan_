@@ -11,6 +11,15 @@ const conversationSchema = new Schema(
         required: true,
       },
     ],
+    deletedFor: {
+      type: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "User",
+        },
+      ],
+      default: [],
+    },
     // İLAN ÜZERİNDEN başlayan sohbetlerde dolu olur, community/DM için boş olabilir.
     relatedPet: {
       type: Schema.Types.ObjectId,

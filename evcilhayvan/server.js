@@ -15,6 +15,7 @@ import petRoutes from "./src/routes/petRoutes.js";
 import interactionRoutes from "./src/routes/interactionRoutes.js";
 import messageRoutes from "./src/routes/messageRoutes.js";
 import matchingRoutes from "./src/routes/matchingRoutes.js";
+import storeRoutes from "./src/routes/storeRoutes.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -47,6 +48,7 @@ app.use("/api/pets", petRoutes);
 app.use("/api/interactions", interactionRoutes);
 app.use("/api/conversations", messageRoutes);
 app.use("/api/matching", matchingRoutes);
+app.use("/api/store", storeRoutes);
 
 // DB & Server
 const PORT = process.env.PORT || 4000;

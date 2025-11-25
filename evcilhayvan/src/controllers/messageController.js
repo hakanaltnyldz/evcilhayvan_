@@ -12,7 +12,10 @@ export async function getMyConversations(req, res) {
   try {
     const userId = req.user.sub;
 
-    const conversations = await Conversation.find({ participants: userId })
+    const conversations = await Conversation.find({
+      participants: userId,
+      deletedFor: { $ne: userId },
+    })
       .populate("participants", "name avatarUrl email")
       .populate("relatedPet", "name photos")
       .sort({ updatedAt: -1 });
@@ -38,6 +41,7 @@ export async function getMessages(req, res) {
     const conversation = await Conversation.findOne({
       _id: conversationId,
       participants: userId,
+      deletedFor: { $ne: userId },
     });
     if (!conversation) {
       return res
@@ -80,6 +84,11 @@ export async function sendMessage(req, res) {
       return res
         .status(404)
         .json({ message: "Sohbet bulunamadı veya yetkiniz yok" });
+    }
+
+    // Yeni mesaj atıldığında silme listelerini temizleyip sohbeti tekrar görünür yap
+    if (conversation.deletedFor && conversation.deletedFor.length > 0) {
+      conversation.deletedFor = [];
     }
 
     const message = await Message.create({
@@ -173,6 +182,12 @@ export async function createOrGetConversation(req, res) {
       });
     }
 
+    // Silinmiş olsa bile yeniden başlatırken görünür hale getir
+    if (conversation.deletedFor && conversation.deletedFor.length > 0) {
+      conversation.deletedFor = [];
+      await conversation.save();
+    }
+
     const populated = await Conversation.findById(conversation._id)
       .populate("participants", "name avatarUrl email")
       .populate("relatedPet", "name photos");
@@ -202,10 +217,16 @@ export async function deleteConversation(req, res) {
         .json({ message: "Sohbet bulunamadı veya yetkiniz yok" });
     }
 
-    await Message.deleteMany({ conversationId });
-    await conversation.deleteOne();
+    const alreadyDeleted = (conversation.deletedFor || []).some(
+      (id) => id.toString() === userId
+    );
 
-    res.status(200).json({ ok: true });
+    if (!alreadyDeleted) {
+      conversation.deletedFor.push(userId);
+      await conversation.save();
+    }
+
+    res.status(200).json({ ok: true, softDeleted: true });
   } catch (err) {
     console.error("[deleteConversation HATA]", err);
     res
